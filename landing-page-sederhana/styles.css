@@ -116,6 +116,58 @@ a {
 }
 
 /* ===================================
+   TOP BANNER - INSTITUTIONAL BRANDING
+   =================================== */
+.top-banner {
+    background: linear-gradient(135deg, var(--color-dark) 0%, var(--color-dark-soft) 100%);
+    padding: var(--spacing-xs) 0;
+    border-bottom: 2px solid var(--color-primary);
+    position: relative;
+    z-index: 100;
+}
+
+.banner-text {
+    text-align: center;
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.banner-event {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.banner-org {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.banner-separator {
+    color: rgba(255, 255, 255, 0.3);
+    margin: 0 var(--spacing-xs);
+}
+
+.banner-institution {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+/* Mobile optimization for banner */
+@media (max-width: 480px) {
+    .banner-text {
+        font-size: 0.75rem;
+        letter-spacing: 0.3px;
+    }
+
+    .banner-separator {
+        margin: 0 0.25rem;
+    }
+}
+
+/* ===================================
    SECTION 1: HERO
    =================================== */
 .hero {
