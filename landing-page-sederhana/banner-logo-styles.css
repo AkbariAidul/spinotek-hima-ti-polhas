@@ -20,6 +20,11 @@
     filter: brightness(1.1);
 }
 
+.banner-logo-large {
+    height: 48px;
+    /* Increased from 32px */
+}
+
 /* Update existing text styles */
 .banner-event,
 .banner-org,
@@ -41,6 +46,10 @@
 
     .banner-logo {
         height: 24px;
+    }
+
+    .banner-logo-large {
+        height: 36px;
     }
 
     .banner-event,
@@ -67,6 +76,10 @@
 
     .banner-logo {
         height: 20px;
+    }
+
+    .banner-logo-large {
+        height: 28px;
     }
 
     .banner-item {
