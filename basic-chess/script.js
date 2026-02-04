@@ -43,14 +43,82 @@ let isAnimating = false;
 // Piece Values for Minimax
 const PIECE_VALUES = {
     p: 10, n: 30, b: 30, r: 50, q: 90, k: 900,
-    P: -10, N: -30, B: -30, R: -50, Q: -90, K: -900 // Negative for White (AI is Black usually maximizing, but we can flip logic)
+    P: -10, N: -30, B: -30, R: -50, Q: -90, K: -900 // Negative for White
 };
-// NOTE: We'll implement Minimax maximizing for BLACK (AI) and minimizing for WHITE.
-// White pieces are Positive? Actually usually White is Max, Black is Min.
-// Let's standard: White > 0, Black < 0.
-// So AI (Black) wants to Minimize the score. 
 
-let gameMode = 'ai'; // 'ai' or 'human'
+// Piece-Square Tables (Simplified for Black AI perspective - we will flip for White if needed, but currently AI is always Black)
+// These values are additive to the piece value.
+// Central squares are usually better.
+const PST_W = {
+    p: [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [5, 5, 5, 5, 5, 5, 5, 5],
+        [1, 1, 2, 3, 3, 2, 1, 1],
+        [0.5, 0.5, 1, 2.5, 2.5, 1, 0.5, 0.5],
+        [0, 0, 0, 2, 2, 0, 0, 0],
+        [0.5, -0.5, -1, 0, 0, -1, -0.5, 0.5],
+        [0.5, 1, 1, -2, -2, 1, 1, 0.5],
+        [0, 0, 0, 0, 0, 0, 0, 0]
+    ],
+    n: [
+        [-5, -4, -3, -3, -3, -3, -4, -5],
+        [-4, -2, 0, 0, 0, 0, -2, -4],
+        [-3, 0, 1, 1.5, 1.5, 1, 0, -3],
+        [-3, 0.5, 1.5, 2, 2, 1.5, 0.5, -3],
+        [-3, 0, 1.5, 2, 2, 1.5, 0, -3],
+        [-3, 0.5, 1, 1.5, 1.5, 1, 0.5, -3],
+        [-4, -2, 0, 0.5, 0.5, 0, -2, -4],
+        [-5, -4, -3, -3, -3, -3, -4, -5]
+    ],
+    b: [
+        [-2, -1, -1, -1, -1, -1, -1, -2],
+        [-1, 0, 0, 0, 0, 0, 0, -1],
+        [-1, 0, 0.5, 1, 1, 0.5, 0, -1],
+        [-1, 0.5, 0.5, 1, 1, 0.5, 0.5, -1],
+        [-1, 0, 1, 1, 1, 1, 0, -1],
+        [-1, 1, 1, 1, 1, 1, 1, -1],
+        [-1, 0.5, 0, 0, 0, 0, 0.5, -1],
+        [-2, -1, -1, -1, -1, -1, -1, -2]
+    ],
+    r: [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0.5, 1, 1, 1, 1, 1, 1, 0.5],
+        [-0.5, 0, 0, 0, 0, 0, 0, -0.5],
+        [-0.5, 0, 0, 0, 0, 0, 0, -0.5],
+        [-0.5, 0, 0, 0, 0, 0, 0, -0.5],
+        [-0.5, 0, 0, 0, 0, 0, 0, -0.5],
+        [-0.5, 0, 0, 0, 0, 0, 0, -0.5],
+        [0, 0, 0, 0.5, 0.5, 0, 0, 0]
+    ],
+    q: [
+        [-2, -1, -1, -0.5, -0.5, -1, -1, -2],
+        [-1, 0, 0, 0, 0, 0, 0, -1],
+        [-1, 0, 0.5, 0.5, 0.5, 0.5, 0, -1],
+        [-0.5, 0, 0.5, 0.5, 0.5, 0.5, 0, -0.5],
+        [0, 0, 0.5, 0.5, 0.5, 0.5, 0, -0.5],
+        [-1, 0.5, 0.5, 0.5, 0.5, 0.5, 0, -1],
+        [-1, 0, 0.5, 0, 0, 0, 0, -1],
+        [-2, -1, -1, -0.5, -0.5, -1, -1, -2]
+    ],
+    k: [
+        [-3, -4, -4, -5, -5, -4, -4, -3],
+        [-3, -4, -4, -5, -5, -4, -4, -3],
+        [-3, -4, -4, -5, -5, -4, -4, -3],
+        [-3, -4, -4, -5, -5, -4, -4, -3],
+        [-2, -3, -3, -4, -4, -3, -3, -2],
+        [-1, -2, -2, -2, -2, -2, -2, -1],
+        [2, 2, 0, 0, 0, 0, 2, 2],
+        [2, 3, 1, 0, 0, 1, 3, 2]
+    ]
+};
+
+// Mirror for Black
+const PST_B = {};
+['p', 'n', 'b', 'r', 'q', 'k'].forEach(key => {
+    PST_B[key] = PST_W[key].slice().reverse();
+});
+
+let gameMode = 'ai-easy'; // 'human', 'ai-easy', 'ai-medium', 'ai-hard'
 
 function initGame() {
     // Deep copy initial board
@@ -137,8 +205,8 @@ function renderBoard() {
 function handleSquareClick(r, c) {
     if (!gameActive || isAnimating) return;
 
-    // Prevent Human from clicking if it's AI turn (and we are in AI mode)
-    if (gameMode === 'ai' && turn !== WHITE) return;
+    // Prevent Human from clicking if it's AI turn (and we are in an AI mode)
+    if (gameMode.startsWith('ai-') && turn !== WHITE) return;
 
     const clickedPiece = board[r][c];
     const clickedColor = clickedPiece ? getPieceColor(clickedPiece) : null;
@@ -165,7 +233,7 @@ function handleSquareClick(r, c) {
                 isAnimating = false;
 
                 // Trigger AI if applicable
-                if (gameActive && gameMode === 'ai' && turn === BLACK) {
+                if (gameActive && gameMode.startsWith('ai-') && turn === BLACK) {
                     setTimeout(() => {
                         makeAIMove();
                     }, 500); // Delay for realism
@@ -507,18 +575,42 @@ function makeAIMove() {
     // For "Basic" minimax, we often ignore updating EP/Castling rights deeply or make global assumptions.
     // We will do a best effort with current global 'castlingRights' frozen for the search root.
 
-    const depth = 2; // Keep it responsive. 3 might be slow in JS without optimization.
-    const bestMove = minimaxRoot(depth, board, true);
+    // Difficulty Logic
+    if (gameMode === 'ai-easy') {
+        makeRandomMove();
+        return;
+    }
 
-    if (bestMove) {
+    let depth = 2; // Default Medium
+    if (gameMode === 'ai-hard') depth = 3;
+
+    setTimeout(() => {
+        const bestMove = minimaxRoot(depth, board, true);
+        if (bestMove) {
+            isAnimating = true;
+            animateMove(bestMove).then(() => {
+                makeMove(bestMove, board, true);
+                renderBoard();
+                isAnimating = false;
+            });
+        } else {
+            // If No move found by minimax (shouldn't happen unless Checkmate/Stalemate which are handled elsewhere),
+            // fallback to random
+            makeRandomMove();
+        }
+    }, 100);
+}
+
+function makeRandomMove() {
+    const moves = getAllMoves(BLACK, board);
+    if (moves.length > 0) {
+        const randomMove = moves[Math.floor(Math.random() * moves.length)];
         isAnimating = true;
-        animateMove(bestMove).then(() => {
-            makeMove(bestMove, board, true);
+        animateMove(randomMove).then(() => {
+            makeMove(randomMove, board, true);
             renderBoard();
             isAnimating = false;
         });
-    } else {
-        console.log("AI has no moves? Mate?");
     }
 }
 
@@ -530,17 +622,45 @@ function evaluateBoard(currentBoard) {
             if (piece) {
                 totalEvaluation += PIECE_VALUES[piece] || 0;
 
-                // Positional Logic (Simplified: Central Control)
-                if (piece.toLowerCase() === 'p' || piece.toLowerCase() === 'n') {
-                    if (r >= 2 && r <= 5 && c >= 2 && c <= 5) {
-                        totalEvaluation += (getPieceColor(piece) === WHITE ? 2 : -2);
+                // PST Logic
+                const type = piece.toLowerCase();
+                if (type !== 'k') { // King PST is complex with endgame, simplified here
+                    if (getPieceColor(piece) === WHITE) {
+                        // PST_W is for White
+                        if (PST_W[type] && PST_W[type][r] && PST_W[type][r][c] !== undefined) {
+                            totalEvaluation += PST_W[type][7 - r][c]; // Note: PST defined 0..7, board 0..7. 
+                            // Actually standard PSTs are usually Rank 1 (index 7) to Rank 8 (index 0).
+                            // My PST_W above: Row 0 is Rank 8? No, let's assume Row 0 is Rank 8 (Top) as per visual board array.
+                            // Wait, Row 0 in array is Rank 8 (Black side).
+                            // Row 7 in array is Rank 1 (White side).
+                            // My PST_W definition:
+                            // p row 1: [5,5...] -> This is usually Rank 7 (pawns about to promote).
+                            // p row 6: [0.5, 1...]. This is Rank 2 (start).
+                            // So my PST_W is defined such that Index 0 is Rank 8.
+                            // But White pawns start at Row 6 (Rank 2).
+                            // Let's check my PST_W for 'p':
+                            // Row 6 (Rank 2): [0.5, 1, 1, -2, -2, 1, 1, 0.5] -> Reasonable starting penalty/bonus?
+                            // Actually, standard PST:
+                            // Pawn: Rank 7 (Index 1) is 50 (high). Rank 2 (Index 6) is 5.
+                            // My PST_W: Row 1 is 5. Correct.
+                            // So PST_W matches board coordinates (Row 0 = Rank 8).
+                            totalEvaluation += PST_W[type][r][c];
+                        }
+                    } else {
+                        // Black
+                        // PST_B is reversed PST_W.
+                        if (PST_B[type] && PST_B[type][r] && PST_B[type][r][c] !== undefined) {
+                            totalEvaluation -= PST_B[type][r][c]; // Subtract because Black wants to Minimize, and these are bonuses for Black.
+                            // Wait, PIECE_VALUES for Black are Negative (e.g., -10).
+                            // If Black has a good position, we want the score to be MORE Negative?
+                            // Yes. So if PST says +5 (good spot), we SUBTRACT 5.
+                        }
                     }
                 }
             }
         }
     }
     return totalEvaluation;
-    // Positive = White advantage, Negative = Black advantage.
 }
 
 function minimaxRoot(depth, currentBoard, isMaximizingPlayer) {
@@ -590,9 +710,9 @@ function minimax(depth, currentBoard, alpha, beta, isMaximizingPlayer) {
 
         for (let i = 0; i < moves.length; i++) {
             const nextBoard = simulateMove(moves[i], currentBoard);
-            const eval = minimax(depth - 1, nextBoard, alpha, beta, false);
-            maxEval = Math.max(maxEval, eval);
-            alpha = Math.max(alpha, eval);
+            const score = minimax(depth - 1, nextBoard, alpha, beta, false);
+            maxEval = Math.max(maxEval, score);
+            alpha = Math.max(alpha, score);
             if (beta <= alpha) break;
         }
         return maxEval;
@@ -603,9 +723,9 @@ function minimax(depth, currentBoard, alpha, beta, isMaximizingPlayer) {
 
         for (let i = 0; i < moves.length; i++) {
             const nextBoard = simulateMove(moves[i], currentBoard);
-            const eval = minimax(depth - 1, nextBoard, alpha, beta, true);
-            minEval = Math.min(minEval, eval);
-            beta = Math.min(beta, eval);
+            const score = minimax(depth - 1, nextBoard, alpha, beta, true);
+            minEval = Math.min(minEval, score);
+            beta = Math.min(beta, score);
             if (beta <= alpha) break;
         }
         return minEval;
@@ -678,8 +798,11 @@ function animateMove(move) {
 // --- UI Helpers ---
 
 function updateStatus() {
-    if (gameMode === 'ai') {
-        statusElement.textContent = `Giliran: ${turn === WHITE ? 'Putih (Anda)' : 'Hitam (AI Thinking...)'}`;
+    if (gameMode.startsWith('ai-')) {
+        let diff = 'Mudah';
+        if (gameMode === 'ai-medium') diff = 'Sedang';
+        if (gameMode === 'ai-hard') diff = 'Sulit';
+        statusElement.textContent = `Giliran: ${turn === WHITE ? 'Putih (Anda)' : `Hitam (AI ${diff} Thinking...)`}`;
     } else {
         statusElement.textContent = `Giliran: ${turn === WHITE ? 'Putih (Player 1)' : 'Hitam (Player 2)'}`;
     }
