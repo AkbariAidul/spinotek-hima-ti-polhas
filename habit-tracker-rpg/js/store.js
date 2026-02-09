@@ -191,7 +191,10 @@ window.Store = {
             state.character.flags = state.character.flags || {};
             state.character.flags.hasUpgraded = true;
 
+            state.character.flags.hasUpgraded = true;
+
             this.addLogEntry(`Augmentation installed: ${result.upgradeName} (Lvl ${result.newLevel})`, 'UPGRADE', 'SUCCESS');
+            window.UI.triggerEffect('char-gold', 'anim-pulse');
             save();
         } else {
             addLog(`SYSTEM: Upgrade Error: ${result.reason}`, 'failure');

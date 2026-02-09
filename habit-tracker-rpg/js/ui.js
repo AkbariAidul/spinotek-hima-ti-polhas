@@ -65,6 +65,26 @@ window.UI = {
                 }
             }, 3000);
         }
+    },
+
+    /**
+     * Micro-Feedback Trigger
+     * @param {string} elementId - ID of element to animate
+     * @param {string} animationClass - 'anim-shake', 'anim-glow', 'anim-pulse'
+     */
+    triggerEffect(elementId, animationClass) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+
+        // Reset animation logic
+        el.classList.remove(animationClass);
+        void el.offsetWidth; // Force reflow
+        el.classList.add(animationClass);
+
+        // Cleanup
+        setTimeout(() => {
+            if (el) el.classList.remove(animationClass);
+        }, 1000);
     }
 };
 

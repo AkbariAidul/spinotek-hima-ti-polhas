@@ -925,7 +925,74 @@ body.is-fainted {
 }
 
 .cy-btn-warn {
-    border-color: var(--cy-neon-red) !important;
     color: var(--cy-neon-red) !important;
     animation: blink 0.5s infinite alternate;
+}
+
+/* Micro-Feedback Animations */
+@keyframes shake-anim {
+    0% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    50% {
+        transform: translateX(5px);
+    }
+
+    75% {
+        transform: translateX(-5px);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.anim-shake {
+    animation: shake-anim 0.4s ease-in-out;
+}
+
+@keyframes glow-anim {
+    0% {
+        box-shadow: 0 0 5px var(--cy-neon-blue);
+        filter: brightness(1);
+    }
+
+    50% {
+        box-shadow: 0 0 20px var(--cy-neon-blue);
+        filter: brightness(1.5);
+    }
+
+    100% {
+        box-shadow: 0 0 5px var(--cy-neon-blue);
+        filter: brightness(1);
+    }
+}
+
+.anim-glow {
+    animation: glow-anim 0.6s ease-out;
+    border-color: var(--cy-neon-blue) !important;
+}
+
+@keyframes pulse-anim {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.anim-pulse {
+    animation: pulse-anim 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    color: var(--cy-neon-gold) !important;
 }
