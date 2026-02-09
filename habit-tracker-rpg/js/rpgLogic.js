@@ -287,6 +287,41 @@ function canPurchaseUpgrade(character, type) {
     return true;
 }
 
+/**
+ * Derived State Selector (UI View Model)
+ * Centralizes all display logic calculations.
+ */
+function getCharacterViewState(character) {
+    if (!character) return null;
+
+    const maxHp = getMaxHp(character);
+    const hpPercent = maxHp > 0 ? (character.hp / maxHp) * 100 : 0;
+    const maxExp = character.maxExp || 1;
+    const expPercent = (character.currentExp / maxExp) * 100;
+
+    const isFainted = character.status === CHARACTER_STATUS.FAINTED;
+    const isStabilized = !!(character.debuff && character.debuff.stabilized);
+
+    // Recovery time remaining (if fainted)
+    let recoveryTimeLeft = 0;
+    if (isFainted) {
+        const expiresAt = (character.debuff && character.debuff.expiresAt)
+            ? character.debuff.expiresAt
+            : (character.lastFaintedTimestamp + FAINT_PENALTY_DURATION_MS);
+        recoveryTimeLeft = Math.max(0, expiresAt - Date.now());
+    }
+
+    return {
+        hpPercent: Math.min(100, Math.max(0, hpPercent)).toFixed(1),
+        expPercent: Math.min(100, Math.max(0, expPercent)).toFixed(1),
+        maxHp,
+        isFainted,
+        isStabilized,
+        canUseStabilizer: canUseNeuralStabilizer(character),
+        recoveryTimeLeft
+    };
+}
+
 // Expose to Global Scope
 window.RPG = {
     DIFFICULTY_TIERS,
@@ -305,5 +340,9 @@ window.RPG = {
     canExecuteHabit,
     canAbortHabit,
     canUseNeuralStabilizer,
-    canPurchaseUpgrade
+    canAbortHabit,
+    canUseNeuralStabilizer,
+    canPurchaseUpgrade,
+    // Selectors
+    getCharacterViewState
 };

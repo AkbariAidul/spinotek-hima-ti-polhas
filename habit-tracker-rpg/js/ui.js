@@ -38,78 +38,78 @@ window.UI = {
     }
 };
 
+// Render functions
 function renderDashboard(char) {
     if (!elements.charLevel) return; // Guard
 
+    // Use Derived State Selector
+    const viewState = window.RPG.getCharacterViewState(char);
+
+    // Basic Info
     elements.charLevel.textContent = String(char.level).padStart(2, '0');
     elements.charGold.innerHTML = `${char.gold} <button onclick="window.UI.toggleAugmentationPanel(true)" style="background:none; border:none; color:var(--cy-neon-gold); cursor:pointer; font-weight:bold; font-size:1.2em; vertical-align:middle;">+</button>`;
-    elements.charStatus.textContent = char.status;
 
-    // HP Bar
-    elements.hpText.textContent = `${char.hp}/${char.maxHp}`;
-    const hpPercent = (char.hp / char.maxHp) * 100;
-    elements.hpBar.style.width = `${hpPercent}%`;
+    // Status Logic
+    let statusText = char.status;
+    if (viewState.isStabilized) statusText = "STABILIZED";
+    elements.charStatus.textContent = statusText;
 
-    // EXP Bar
-    const expPercent = (char.currentExp / char.maxExp) * 100;
-    elements.expBar.style.width = `${expPercent}%`;
-
-    // Fainted State Handling
-    const isFainted = char.status === 'FAINTED';
-
-    // Toggle Global State
-    document.body.classList.toggle('is-fainted', isFainted);
-    document.querySelector('.dashboard').classList.toggle('is-fainted', isFainted);
-
-    if (isFainted) {
-        const isStabilized = char.debuff && char.debuff.stabilized;
-        const penaltyText = isStabilized ? '[-25% GAIN]' : '[-50% GAIN]';
-        const color = isStabilized ? 'var(--cy-neon-gold)' : 'var(--cy-neon-red)';
-        const statusText = isStabilized ? 'STABILIZED' : 'FAILURE';
-
-        elements.charStatus.className = isStabilized ? 'cy-badge stabilized' : 'cy-badge fainted';
-        elements.charStatus.textContent = statusText;
-        elements.charStatus.style.borderColor = color;
-        elements.charStatus.style.color = color;
-
-        elements.expText.innerHTML = `${Math.floor(char.currentExp)}/${Math.floor(char.maxExp)} <span style="color:${color}; font-size:0.6em;">${penaltyText}</span>`;
-
-        // Inject Stabilizer Button if not stabilized
-        // We'll use the char-info area or append to dashboard header if cleaner
-        // Let's replace the Char Status badge area with the button if affordable? 
-        // Or simply append it to the panel header if it fits.
-        // Better: Append to char-info container as a new row or overlay.
-        let stabilizerBtn = document.getElementById('btn-stabilizer');
-        if (!isStabilized) {
-            if (!stabilizerBtn) {
-                // Create Button
-                stabilizerBtn = document.createElement('button');
-                stabilizerBtn.id = 'btn-stabilizer';
-                stabilizerBtn.className = 'cy-btn cy-btn-stabilizer';
-                stabilizerBtn.innerHTML = 'ACTIVATE STABILIZER [200G]';
-                stabilizerBtn.style.width = '100%';
-                stabilizerBtn.style.marginTop = '10px';
-                stabilizerBtn.style.borderColor = 'var(--cy-neon-gold)';
-                stabilizerBtn.style.color = 'var(--cy-neon-gold)';
-                stabilizerBtn.onclick = () => window.Store.triggerStabilizer();
-
-                // Append to char-info (dashboard body)
-                document.querySelector('.char-info').appendChild(stabilizerBtn);
-            }
-        } else {
-            // Remove if stabilized
-            if (stabilizerBtn) stabilizerBtn.remove();
-        }
-
+    // Status Style
+    if (viewState.isFainted) {
+        elements.charStatus.className = viewState.isStabilized ? 'cy-badge stabilized' : 'cy-badge fainted';
+        elements.charStatus.style.borderColor = viewState.isStabilized ? 'var(--cy-neon-gold)' : 'var(--cy-neon-red)';
+        elements.charStatus.style.color = viewState.isStabilized ? 'var(--cy-neon-gold)' : 'var(--cy-neon-red)';
     } else {
         elements.charStatus.className = 'cy-badge';
-        elements.charStatus.textContent = 'NORMAL';
-        elements.charStatus.removeAttribute('style'); // Clear inline styles
-        elements.expText.textContent = `${Math.floor(char.currentExp)}/${Math.floor(char.maxExp)}`;
+        elements.charStatus.removeAttribute('style');
+    }
 
-        // Cleanup Button if exists
-        const btn = document.getElementById('btn-stabilizer');
-        if (btn) btn.remove();
+    // HP Bar
+    elements.hpBar.style.width = `${viewState.hpPercent}%`;
+    elements.hpText.textContent = `${char.hp} / ${viewState.maxHp}`;
+
+    // Apply glitch effect if low HP
+    if (char.hp < (viewState.maxHp * 0.2)) {
+        elements.hpBar.classList.add('critical');
+    } else {
+        elements.hpBar.classList.remove('critical');
+    }
+
+    // EXP Bar
+    elements.expBar.style.width = `${viewState.expPercent}%`;
+    const penaltySuffix = viewState.isFainted
+        ? (viewState.isStabilized
+            ? ' <span style="color:var(--cy-neon-gold); font-size:0.6em;">[-25% GAIN]</span>'
+            : ' <span style="color:var(--cy-neon-red); font-size:0.6em;">[-50% GAIN]</span>')
+        : '';
+    elements.expText.innerHTML = `${Math.floor(char.currentExp)}/${Math.floor(char.maxExp)}${penaltySuffix}`;
+
+    // Global Visual Feedback
+    document.body.classList.toggle('is-fainted', viewState.isFainted);
+    const dashboard = document.querySelector('.dashboard');
+    if (dashboard) dashboard.classList.toggle('is-fainted', viewState.isFainted);
+
+    // Conditional UI for Stabilizer
+    let stabilizerBtn = document.getElementById('btn-stabilizer');
+
+    if (viewState.canUseStabilizer) {
+        if (!stabilizerBtn) {
+            stabilizerBtn = document.createElement('button');
+            stabilizerBtn.id = 'btn-stabilizer';
+            stabilizerBtn.className = 'cy-btn cy-btn-stabilizer';
+            stabilizerBtn.innerHTML = 'ACTIVATE STABILIZER [200G]';
+            stabilizerBtn.style.width = '100%';
+            stabilizerBtn.style.marginTop = '10px';
+            stabilizerBtn.style.borderColor = 'var(--cy-neon-gold)';
+            stabilizerBtn.style.color = 'var(--cy-neon-gold)';
+            stabilizerBtn.onclick = () => window.Store.triggerStabilizer();
+
+            // Append to char-info
+            const container = document.querySelector('.char-info');
+            if (container) container.appendChild(stabilizerBtn);
+        }
+    } else {
+        if (stabilizerBtn) stabilizerBtn.remove();
     }
 }
 
